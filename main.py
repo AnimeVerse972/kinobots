@@ -130,7 +130,7 @@ async def add_kino_handler(message: types.Message, state: FSMContext):
         save_codes(kino)
         # reklama postni kanalga yuboramiz
         url = f"https://t.me/{BOT_USERNAME.strip('@')}?start={code}"
-        text = f"🎬 Yangi kino chiqdi!\n\nKod: `{code}`\n\n📥 Yuklab olish👇"
+        text = message.text  # foydalanuvchi yozgan matnni o'zini yuboramiz
         kb = InlineKeyboardMarkup().add(InlineKeyboardButton("📥 Yuklab olish", url=url))
         await bot.send_message(CHANNEL_USERNAME, text, reply_markup=kb, parse_mode="Markdown")
         await message.answer("✅ Kino qo‘shildi va reklama post yuborildi!")
