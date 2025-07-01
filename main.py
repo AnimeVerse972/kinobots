@@ -14,16 +14,16 @@ load_dotenv()
 keep_alive()
 
 API_TOKEN = os.getenv("API_TOKEN")
-CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME")  # asosiy kanal (obuna tekshiruvi uchun)
-BOT_USERNAME = os.getenv("BOT_USERNAME")          # tugma linki uchun
+CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME")
+BOT_USERNAME = os.getenv("BOT_USERNAME")
 
 bot = Bot(token=API_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
-ADMINS = [6486825926]  # Siz o'zingizni admin qiling
+ADMINS = [6486825926]
 
-# === FAYL FUNKSIYALARI ===
+# === FAYLLAR ===
 
 def load_codes():
     try:
@@ -36,10 +36,22 @@ def save_codes(data):
     with open("kino_posts.json", "w") as f:
         json.dump(data, f, indent=4)
 
+def load_users():
+    try:
+        with open("users.json", "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+def save_users(data):
+    with open("users.json", "w") as f:
+        json.dump(data, f, indent=4)
+
 # === HOLATLAR ===
 
 class AdminStates(StatesGroup):
     waiting_for_kino_data = State()
+    waiting_for_remove_code = State()
 
 # === OBUNA TEKSHIRISH ===
 
@@ -54,6 +66,12 @@ async def is_user_subscribed(user_id):
 
 @dp.message_handler(commands=['start'])
 async def start_handler(message: types.Message):
+    # Foydalanuvchini bazaga yozish
+    users = load_users()
+    if message.from_user.id not in users:
+        users.append(message.from_user.id)
+        save_users(users)
+
     args = message.get_args()
     if args and args.isdigit():
         code = args
@@ -66,7 +84,13 @@ async def start_handler(message: types.Message):
         else:
             await send_kino_by_code(message.from_user.id, code)
     else:
-        await message.answer("🎬 Botga xush kelibsiz!\nKino olish uchun tugmani bosing yoki kod yuboring.")
+        if message.from_user.id in ADMINS:
+            markup = ReplyKeyboardMarkup(resize_keyboard=True)
+            markup.add("➕ Kino qo‘shish", "❌ Kodni o‘chirish")
+            markup.add("📄 Kodlar ro‘yxati", "📊 Statistika")
+            await message.answer("👮‍♂️ Admin panel:", reply_markup=markup)
+        else:
+            await message.answer("🎬 Botga xush kelibsiz!\nKino olish uchun tugmani bosing yoki kod yuboring.")
 
 @dp.callback_query_handler(lambda c: c.data.startswith("check_sub:"))
 async def check_sub(callback: types.CallbackQuery):
@@ -91,12 +115,12 @@ async def send_kino_by_code(user_id, code):
     else:
         await bot.send_message(user_id, "❌ Bunday kino topilmadi.")
 
-# === ADMIN PANEL ===
+# === ➕ KINO QO‘SHISH ===
 
 @dp.message_handler(lambda m: m.text == "➕ Kino qo‘shish")
 async def add_kino_start(message: types.Message):
     if message.from_user.id in ADMINS:
-        await message.answer("📝 Kino kod, kanal va post ID yuboring:\nMasalan:\n`47 @ServerChannel 1234`", parse_mode="Markdown")
+        await message.answer("📝 Kino kodi, kanal va post ID yuboring:\nMasalan:\n`47 @ServerChannel 1234`", parse_mode="Markdown")
         await AdminStates.waiting_for_kino_data.set()
 
 @dp.message_handler(state=AdminStates.waiting_for_kino_data)
@@ -110,7 +134,7 @@ async def add_kino_handler(message: types.Message, state: FSMContext):
     kino_data[code] = {"channel": channel, "message_id": int(msg_id)}
     save_codes(kino_data)
 
-    # Reklama postini yuborish
+    # Reklama post
     yukla_url = f"https://t.me/{BOT_USERNAME.strip('@')}?start={code}"
     reklama = f"🎬 Yangi kino chiqdi!\n\nKod: `{code}`\n\n📥 Yuklab olish👇"
     markup = InlineKeyboardMarkup().add(InlineKeyboardButton("📥 Yuklab olish", url=yukla_url))
@@ -119,13 +143,46 @@ async def add_kino_handler(message: types.Message, state: FSMContext):
     await message.answer("✅ Kino qo‘shildi va kanalga post yuborildi!")
     await state.finish()
 
-# === FOYDALI TUGMALAR ===
+# === ❌ KODNI O‘CHIRISH ===
 
-@dp.message_handler(commands=['admin'])
-async def show_admin_panel(message: types.Message):
+@dp.message_handler(lambda m: m.text == "❌ Kodni o‘chirish")
+async def remove_kino_start(message: types.Message):
     if message.from_user.id in ADMINS:
-        markup = ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("➕ Kino qo‘shish"))
-        await message.answer("🔧 Admin panel", reply_markup=markup)
+        await message.answer("🗑 O‘chirmoqchi bo‘lgan kodni yuboring:")
+        await AdminStates.waiting_for_remove_code.set()
+
+@dp.message_handler(state=AdminStates.waiting_for_remove_code)
+async def remove_kino_handler(message: types.Message, state: FSMContext):
+    code = message.text.strip()
+    kino_data = load_codes()
+    if code in kino_data:
+        del kino_data[code]
+        save_codes(kino_data)
+        await message.answer(f"✅ Kod o‘chirildi: {code}")
+    else:
+        await message.answer("❌ Bunday kod topilmadi.")
+    await state.finish()
+
+# === 📄 KODLAR RO‘YXATI ===
+
+@dp.message_handler(lambda m: m.text == "📄 Kodlar ro‘yxati")
+async def list_kodlar(message: types.Message):
+    kino_data = load_codes()
+    if not kino_data:
+        await message.answer("📂 Hech qanday kod yo‘q.")
+        return
+    text = "📄 Kodlar ro‘yxati:\n"
+    for code, data in kino_data.items():
+        text += f"🔹 Kod: {code} | Kanal: {data['channel']} | ID: {data['message_id']}\n"
+    await message.answer(text)
+
+# === 📊 STATISTIKA ===
+
+@dp.message_handler(lambda m: m.text == "📊 Statistika")
+async def stats(message: types.Message):
+    kino_data = load_codes()
+    users = load_users()
+    await message.answer(f"📦 Kodlar soni: {len(kino_data)}\n👥 Foydalanuvchilar: {len(users)}")
 
 # === ISHGA TUSHIRISH ===
 
