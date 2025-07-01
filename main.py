@@ -61,45 +61,42 @@ async def is_user_subscribed(user_id):
 # === /start ===
 @dp.message_handler(commands=['start'])
 async def start_handler(message: types.Message):
-    # foydalanuvchini saqlaymiz
     users = load_users()
     if message.from_user.id not in users:
         users.append(message.from_user.id)
         save_users(users)
 
     args = message.get_args()
-    # agar start bilan kod kelgan bo‘lsa
     if args and args.isdigit():
         code = args
         if not await is_user_subscribed(message.from_user.id):
             markup = InlineKeyboardMarkup().add(
-                InlineKeyboardButton("📢 Obuna bo‘lish", url=f"https://t.me/{CHANNEL_USERNAME.strip('@')}"),
-                InlineKeyboardButton("✅ Tekshirish", callback_data=f"check_sub:{code}")
+                InlineKeyboardButton("\ud83d\udce2 Obuna bo‘lish", url=f"https://t.me/{CHANNEL_USERNAME.strip('@')}"),
+                InlineKeyboardButton("\u2705 Tekshirish", callback_data=f"check_sub:{code}")
             )
-            await message.answer("❗ Kino olishdan oldin kanalga obuna bo‘ling:", reply_markup=markup)
+            await message.answer("\u2757 Kino olishdan oldin kanalga obuna bo‘ling:", reply_markup=markup)
         else:
             await send_kino_by_code(message.from_user.id, code)
         return
 
-    # oddiy /start: admin yoki foydalanuvchi
     if message.from_user.id in ADMINS:
         admin_kb = ReplyKeyboardMarkup(resize_keyboard=True)
-        admin_kb.add("➕ Kino qo‘shish", "❌ Kodni o‘chirish")
-        admin_kb.add("📄 Kodlar ro‘yxati", "📊 Statistika")
-        admin_kb.add("❌ Bekor qilish")
-        await message.answer("👮‍♂️ Admin panel:", reply_markup=admin_kb)
+        admin_kb.add("\u2795 Kino qo‘shish", "\u274c Kodni o‘chirish")
+        admin_kb.add("\ud83d\udcc4 Kodlar ro‘yxati", "\ud83d\udcca Statistika")
+        admin_kb.add("\u274c Bekor qilish")
+        await message.answer("\ud83d\udc6e\u200d\u2642\ufe0f Admin panel:", reply_markup=admin_kb)
     else:
-        user_kb = ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("🎬 Kino kodi yuborish"))
-        await message.answer("🎬 Botga xush kelibsiz!\nKino olish uchun kod yuboring.", reply_markup=user_kb)
+        user_kb = ReplyKeyboardMarkup(resize_keyboard=True).add(KeyboardButton("\ud83c\udfae Kino kodi yuborish"))
+        await message.answer("\ud83c\udfae Botga xush kelibsiz!\nKino olish uchun kod yuboring.", reply_markup=user_kb)
 
 @dp.callback_query_handler(lambda c: c.data.startswith("check_sub:"))
 async def check_sub(callback: types.CallbackQuery):
     code = callback.data.split(":",1)[1]
     if await is_user_subscribed(callback.from_user.id):
-        await callback.message.edit_text("✅ Obuna tasdiqlandi, kino yuborilmoqda...")
+        await callback.message.edit_text("\u2705 Obuna tasdiqlandi, kino yuborilmoqda...")
         await send_kino_by_code(callback.from_user.id, code)
     else:
-        await callback.answer("❗ Hali obuna emassiz!", show_alert=True)
+        await callback.answer("\u2757 Hali obuna emassiz!", show_alert=True)
 
 # === KINO YUBORISH ===
 async def send_kino_by_code(chat_id, code):
@@ -107,16 +104,15 @@ async def send_kino_by_code(chat_id, code):
     if data:
         await bot.copy_message(chat_id, data["channel"], data["message_id"])
     else:
-        await bot.send_message(chat_id, "❌ Bunday kino topilmadi.")
+        await bot.send_message(chat_id, "\u274c Bunday kino topilmadi.")
 
-# === ➕ Kino qo‘shish boshlandi ===
+# === ➕ Kino qo‘shish ===
 @dp.message_handler(lambda m: m.text == "➕ Kino qo‘shish")
 async def cmd_add_start(message: types.Message):
     if message.from_user.id in ADMINS:
         await AdminStates.waiting_for_kino_data.set()
-        await message.answer("📝 Format: `KOD @ServerChannel REKLAMA_POST_ID`\nMasalan: `91 @SDSSSASASD 4`", parse_mode="Markdown")
+        await message.answer("\ud83d\udcdd Format: `KOD @ServerChannel REKLAMA_POST_ID`\nMasalan: `91 @SDSSSASASD 4`", parse_mode="Markdown")
 
-# === Kino qo‘shish handler ===
 @dp.message_handler(state=AdminStates.waiting_for_kino_data)
 async def add_kino_handler(message: types.Message, state: FSMContext):
     parts = message.text.strip().split()
@@ -125,27 +121,25 @@ async def add_kino_handler(message: types.Message, state: FSMContext):
         kino = load_codes()
         kino[code] = {
             "channel": channel,
-            "message_id": int(rekl_id)+1  # reklama postdan keyingi kino post
+            "message_id": int(rekl_id)+1
         }
         save_codes(kino)
-        # reklama postni kanalga yuboramiz
-        url = f"https://t.me/{BOT_USERNAME.strip('@')}?start={code}"
-        text = f"🎬 Yangi kino chiqdi!\n\nKod: `{code}`\n\n📥 Yuklab olish👇"
-        kb = InlineKeyboardMarkup().add(InlineKeyboardButton("📥 Yuklab olish", url=url))
-        await bot.send_message(CHANNEL_USERNAME, text, reply_markup=kb, parse_mode="Markdown")
-        await message.answer("✅ Kino qo‘shildi va reklama post yuborildi!")
+        yukla_url = f"https://t.me/{BOT_USERNAME.strip('@')}?start={code}"
+        reklama = message.text  # foydalanuvchi yuborgan matnni reklama sifatida yuboramiz
+        kb = InlineKeyboardMarkup().add(InlineKeyboardButton("\ud83d\udce5 Yuklab olish", url=yukla_url))
+        await bot.send_message(CHANNEL_USERNAME, reklama, reply_markup=kb)
+        await message.answer("\u2705 Kino qo‘shildi va reklama post yuborildi!")
     else:
-        await message.answer("❌ Noto‘g‘ri format!\nMasalan: `91 @SDSSSASASD 4`", parse_mode="Markdown")
+        await message.answer("\u274c Noto‘g‘ri format!\nMasalan: `91 @SDSSSASASD 4`", parse_mode="Markdown")
     await state.finish()
 
-# === ❌ Kodni o‘chirish boshlandi ===
+# === ❌ Kodni o‘chirish ===
 @dp.message_handler(lambda m: m.text=="❌ Kodni o‘chirish")
 async def cmd_remove_start(message: types.Message):
     if message.from_user.id in ADMINS:
         await AdminStates.waiting_for_remove_code.set()
-        await message.answer("🗑 O‘chirmoqchi bo‘lgan kodni yozing:")
+        await message.answer("\ud83d\uddd1 O‘chirmoqchi bo‘lgan kodni yozing:")
 
-# === Kodni o‘chirish handler ===
 @dp.message_handler(state=AdminStates.waiting_for_remove_code)
 async def remove_kino_handler(message: types.Message, state: FSMContext):
     code = message.text.strip()
@@ -153,9 +147,9 @@ async def remove_kino_handler(message: types.Message, state: FSMContext):
     if code in kino:
         kino.pop(code)
         save_codes(kino)
-        await message.answer(f"✅ Kod {code} o‘chirildi.")
+        await message.answer(f"\u2705 Kod {code} o‘chirildi.")
     else:
-        await message.answer("❌ Bunday kod topilmadi.")
+        await message.answer("\u274c Bunday kod topilmadi.")
     await state.finish()
 
 # === 📄 Kodlar ro‘yxati ===
@@ -163,23 +157,22 @@ async def remove_kino_handler(message: types.Message, state: FSMContext):
 async def list_kodlar(message: types.Message):
     kino = load_codes()
     if not kino:
-        return await message.answer("📂 Hech qanday kod yo‘q.")
-    txt = "📄 Kodlar ro‘yxati:\n"
+        return await message.answer("\ud83d\udcc2 Hech qanday kod yo‘q.")
+    txt = "\ud83d\udcc4 Kodlar ro‘yxati:\n"
     for k,v in kino.items():
-        txt+= f"🔹 {k} → kanal {v['channel']} | kino_post={v['message_id']}\n"
+        txt+= f"\ud83d\udd39 {k} → kanal {v['channel']} | kino_post={v['message_id']}\n"
     await message.answer(txt)
 
 # === 📊 Statistika ===
 @dp.message_handler(lambda m: m.text=="📊 Statistika")
 async def stats(message: types.Message):
     kino = load_codes(); users = load_users()
-    await message.answer(f"📦 Kodlar: {len(kino)}\n👥 Foydalanuvchilar: {len(users)}")
+    await message.answer(f"\ud83d\udce6 Kodlar: {len(kino)}\n\ud83d\udc65 Foydalanuvchilar: {len(users)}")
 
-# === ❌ Bekor qilish handler ===
+# === ❌ Bekor qilish ===
 @dp.message_handler(lambda m: m.text=="❌ Bekor qilish", state='*')
 async def cancel_handler(message: types.Message, state: FSMContext):
     await state.finish()
-    # qaytadan admin keyboard
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("➕ Kino qo‘shish", "❌ Kodni o‘chirish")
     kb.add("📄 Kodlar ro‘yxati", "📊 Statistika")
