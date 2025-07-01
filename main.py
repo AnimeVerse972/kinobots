@@ -129,19 +129,26 @@ async def add_kino_handler(message: types.Message, state: FSMContext):
     if len(parts) != 3 or not parts[0].isdigit() or not parts[2].isdigit():
         await message.answer("❌ Noto‘g‘ri format!\nMasalan: `47 @ServerChannel 1234`")
         return
+
     code, channel, msg_id = parts
     kino_data = load_codes()
-    kino_data[code] = {"channel": channel, "message_id": int(msg_id)}
+
+    # Saqlanadigan post ID kino fayl (ya'ni reklama +1)
+    kino_data[code] = {
+        "channel": channel,
+        "message_id": int(msg_id) + 1
+    }
     save_codes(kino_data)
 
-    # Reklama post
+    # Reklama postni kanalga yuborish
     yukla_url = f"https://t.me/{BOT_USERNAME.strip('@')}?start={code}"
     reklama = f"🎬 Yangi kino chiqdi!\n\nKod: `{code}`\n\n📥 Yuklab olish👇"
     markup = InlineKeyboardMarkup().add(InlineKeyboardButton("📥 Yuklab olish", url=yukla_url))
     await bot.send_message(chat_id=CHANNEL_USERNAME, text=reklama, reply_markup=markup, parse_mode="Markdown")
 
-    await message.answer("✅ Kino qo‘shildi va kanalga post yuborildi!")
+    await message.answer("✅ Kino qo‘shildi va reklama post kanalga yuborildi!")
     await state.finish()
+
 
 # === ❌ KODNI O‘CHIRISH ===
 
