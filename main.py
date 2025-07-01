@@ -149,6 +149,15 @@ async def add_kino_handler(message: types.Message, state: FSMContext):
     await message.answer("✅ Kino qo‘shildi va reklama post kanalga yuborildi!")
     await state.finish()
 
+@dp.message_handler(lambda m: m.text == "❌ Bekor qilish", state='*')
+async def cancel_handler(message: types.Message, state: FSMContext):
+    await state.finish()
+    await message.answer("❌ Amal bekor qilindi.", reply_markup=ReplyKeyboardMarkup(resize_keyboard=True).add(
+        KeyboardButton("➕ Kino qo‘shish"), KeyboardButton("❌ Kodni o‘chirish"),
+        KeyboardButton("📄 Kodlar ro‘yxati"), KeyboardButton("📊 Statistika"),
+        KeyboardButton("❌ Bekor qilish")
+    ))
+
 
 # === ❌ KODNI O‘CHIRISH ===
 
